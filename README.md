@@ -106,6 +106,9 @@ packet-panic-agntcy/
 │       ├── noc-detector-agent.json
 │       └── noc-supervisor-agent.json
 │
+├── scripts/
+│   └── directory_demo.sh        # Demo: publica y descubre agentes por capacidad
+│
 ├── supervisor/                  # ← Agente Supervisor (cliente A2A)
 │   ├── main.py                  # API FastAPI: /agent/prompt
 │   ├── agent.py                 # LangGraph + herramienta query_detector
@@ -257,17 +260,56 @@ registro OASF describen las mismas capacidades.
 | `AgentCard` | Python (`a2a.types.AgentCard`) | Manifiesto A2A en tiempo de ejecución |
 | Registro OASF | JSON (esquema OASF `0.8.0`) | Publicación y descubrimiento vía **Agent Directory** |
 
-> **Nota sobre la taxonomía:** los campos `domains[].id` y `skills[].id` usan la
-> taxonomía OASF. Los valores aquí son representativos; valídalos/ajústalos contra
-> el esquema oficial de OASF antes de publicar en un directorio real.
+Los campos `domains[].id` y `skills[].id` usan la **taxonomía oficial de OASF**
+(validados contra `https://schema.oasf.outshift.com`):
 
-Más adelante, estos registros se publican en un **Agent Directory** de AGNTCY
-(*push / pull / search*) mediante el App SDK, que realiza la conversión
-`OASF ↔ AgentCard` automáticamente. El flujo típico es:
+| Agente | Skill OASF | Dominio OASF |
+|--------|-----------|--------------|
+| Detector | `evaluation_monitoring/performance_monitoring` `[1105]` | `technology/networking/network_operations` `[10301]` |
+| Supervisor | `agent_orchestration/agent_coordination` `[1004]` | `technology/networking/network_operations` `[10301]` |
 
+### Demo funcional: descubrimiento por capacidades
+
+Hay un **Agent Directory** local (servicio `directory`, imagen
+`ghcr.io/agntcy/dir-ctl`) que arranca con un perfil opcional. El script
+[`scripts/directory_demo.sh`](scripts/directory_demo.sh) publica ambos registros y
+muestra cómo un agente **encuentra a otro por su capacidad**, sin conocer su
+dirección de antemano:
+
+```bash
+./scripts/directory_demo.sh
 ```
-registro OASF (json)  →  dirctl / App SDK push  →  Agent Directory  →  otros agentes lo descubren (search/pull)
+
+El script hace `push` de los dos registros OASF y luego consultas de
+descubrimiento. Por ejemplo:
+
+```bash
+# ¿Quién sabe monitorear la red?  -> devuelve el CID del Detector
+dirctl search --skill "*performance_monitoring*"
+
+# ¿Quién orquesta agentes?        -> devuelve el CID del Supervisor
+dirctl search --skill "*agent_coordination*"
+
+# ¿Qué agentes operan la red?     -> devuelve AMBOS agentes
+dirctl search --domain "*network_operations*"
 ```
+
+Para validar un registro contra el esquema OASF y apagar el directorio:
+
+```bash
+dirctl validate oasf/agents/noc-detector-agent.json --url https://schema.oasf.outshift.com
+docker compose --profile directory down
+```
+
+> **Agregar más agentes:** crea un nuevo `oasf/agents/<nombre>.json`, valídalo y
+> haz `push`. Aparecerá automáticamente en las búsquedas por skill/dominio. Así el
+> directorio escala más allá de estos dos agentes.
+
+> **Integración en tiempo de ejecución (siguiente paso):** hoy el supervisor
+> conoce el tópico del detector de forma directa (`detector/card.py`). Con el
+> directorio, el supervisor podría **descubrir** dinámicamente al detector por
+> skill (`search`) y luego abrir la sesión A2A hacia el agente encontrado — el
+> patrón que habilita escalar a N detectores.
 
 ---
 

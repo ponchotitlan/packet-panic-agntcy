@@ -28,16 +28,20 @@ from ioa_observe.sdk.decorators import agent
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
 
+from common.directory import discover_agent_by_skill
 from common.llm import get_llm
 from config.config import (
     A2A_REQUEST_TIMEOUT,
     DEFAULT_MESSAGE_TRANSPORT,
     TRANSPORT_SERVER_ENDPOINT,
 )
-from detector.card import AGENT_CARD as detector_card
 from supervisor.errors import RemoteAgentNoResponseError, TransportTimeoutError
 
 logger = logging.getLogger("packetpanic.supervisor.agent")
+
+# Capacidad OASF con la que el supervisor descubre al detector en el directorio
+# (en lugar de importar su AgentCard local).
+_DETECTOR_SKILL = "performance_monitoring"
 
 _SUPERVISOR_SYSTEM_PROMPT = (
     "Eres el Agente Supervisor de un NOC (Network Operations Center). "
@@ -107,6 +111,8 @@ class SupervisorAgent:
 
     def __init__(self, factory: AgntcyFactory) -> None:
         self.factory = factory
+        # Descubre al detector en el Agent Directory por su capacidad OASF.
+        detector_card = discover_agent_by_skill(_DETECTOR_SKILL)
         self._detector_topic = A2AProtocol.create_agent_topic(detector_card)
         self._tools = [self._make_query_detector_tool()]
         self._llm = get_llm().bind_tools(self._tools)

@@ -8,10 +8,21 @@ del proveedor de LLM y de los endpoints HTTP de cada agente.
 """
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
 load_dotenv()  # Carga desde `.env` si existe.
+
+# Raíz del repositorio (dos niveles por encima de este archivo).
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+
+# --- Agent Directory (registros OASF) ---
+# Carpeta desde la que se descubren agentes por sus capacidades. Coincide con
+# la fuente que se publica en el AGNTCY Agent Directory (ver
+# `scripts/directory_demo.sh`). Configurable para apuntar, por ejemplo, a un
+# volumen montado (`/oasf/agents`).
+OASF_RECORDS_DIR = os.getenv("OASF_RECORDS_DIR", str(_REPO_ROOT / "oasf" / "agents"))
 
 # --- Transporte de mensajería (A2A sobre SLIM por defecto) ---
 DEFAULT_MESSAGE_TRANSPORT = os.getenv("DEFAULT_MESSAGE_TRANSPORT", "SLIM")

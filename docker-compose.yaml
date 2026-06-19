@@ -12,6 +12,16 @@ services:
       - ./docker/slim-config.yaml:/config.yaml
     command: ["/slim", "--config", "/config.yaml"]
 
+  # Agent Directory (AGNTCY dir): publicación y descubrimiento de agentes por capacidades (OASF)
+  # Luego ejecuta la demo: ./scripts/directory_demo.sh
+  directory:
+    image: ghcr.io/agntcy/dir-ctl:v1.5.0
+    container_name: packetpanic-directory
+    command: ["daemon", "start"]
+    volumes:
+      - ./oasf:/oasf:ro
+      - ./docker/certs:/certs:ro
+
   # Agente Detector: servidor A2A con acceso (simulado) a la red.
   detector:
     build:

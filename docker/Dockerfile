@@ -17,6 +17,8 @@ COPY common ./common
 COPY config ./config
 COPY detector ./detector
 COPY supervisor ./supervisor
+# Registros OASF: fuente del Agent Directory para descubrir agentes en runtime.
+COPY oasf ./oasf
 
 RUN pip install --no-cache-dir .
 

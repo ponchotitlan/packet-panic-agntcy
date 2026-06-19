@@ -6,8 +6,8 @@
   "description": "Agente Supervisor del NOC. Recibe consultas del operador, decide si requieren telemetría de la red y, en ese caso, delega en el Agente Detector vía A2A; finalmente sintetiza una respuesta accionable.",
   "domains": [
     {
-      "id": 1101.0,
-      "name": "information_technology/network_and_infrastructure"
+      "id": 10301.0,
+      "name": "technology/networking/network_operations"
     }
   ],
   "schema_version": "0.8.0",
@@ -22,12 +22,11 @@
     {
       "data": {
         "transports": [
-          "http",
-          "slim"
+          "http"
         ],
         "capabilities": [],
         "output_modes": [
-          "text/plain"
+          "application/json"
         ],
         "protocol_version": "0.3.0",
         "input_modes": [

@@ -6,28 +6,27 @@
   "description": "Agente con acceso a los dispositivos del NOC. Ejecuta diagnósticos de red en vivo (inventario, salud, contadores de interfaz, diagnóstico de enlaces) y devuelve telemetría accionable.",
   "domains": [
     {
-      "id": 1101.0,
-      "name": "information_technology/network_and_infrastructure"
+      "id": 10301.0,
+      "name": "technology/networking/network_operations"
     }
   ],
   "schema_version": "0.8.0",
   "name": "NOC Detector Agent",
   "skills": [
     {
-      "id": 1006.0,
-      "name": "monitoring/network_diagnostics"
+      "id": 1105.0,
+      "name": "evaluation_monitoring/performance_monitoring"
     }
   ],
   "modules": [
     {
       "data": {
         "transports": [
-          "http",
-          "slim"
+          "http"
         ],
         "capabilities": [],
         "output_modes": [
-          "text/plain"
+          "application/json"
         ],
         "protocol_version": "0.3.0",
         "input_modes": [
