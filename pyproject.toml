@@ -1,0 +1,26 @@
+[project]
+name = "packet-panic-agntcy"
+version = "0.1.0"
+description = "Sistema de dos agentes (Supervisor + Detector) para un NOC, construido sobre AGNTCY."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+dependencies = [
+    "agntcy-app-sdk==0.4.7.dev0",
+    "a2a-sdk==0.3.2",
+    "langgraph>=1.0.0",
+    "langchain-core>=0.3.0",
+    "langchain-litellm>=0.2.0",
+    "ioa-observe-sdk>=1.0.24",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.0.0",
+]
+
+[tool.setuptools]
+packages = ["common", "config", "detector", "detector.tools", "supervisor"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"

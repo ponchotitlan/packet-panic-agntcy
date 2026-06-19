@@ -1,0 +1,54 @@
+# Copyright Packet Panic Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+services:
+  # Gateway de mensajería SLIM: bus seguro entre el supervisor y el detector.
+  slim:
+    image: ghcr.io/agntcy/slim:1.4.0
+    container_name: packetpanic-slim
+    ports:
+      - "46357:46357"
+    volumes:
+      - ./docker/slim-config.yaml:/config.yaml
+    command: ["/slim", "--config", "/config.yaml"]
+
+  # Agente Detector: servidor A2A con acceso (simulado) a la red.
+  detector:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: packetpanic-detector
+    command: ["python", "-m", "detector.detector_server"]
+    env_file:
+      - .env
+    environment:
+      - DEFAULT_MESSAGE_TRANSPORT=SLIM
+      - TRANSPORT_SERVER_ENDPOINT=http://slim:46357
+    volumes:
+      # CAs corporativas (montadas, no horneadas). Coloca tus .pem/.crt aquí.
+      - ./docker/certs:/certs:ro
+    depends_on:
+      - slim
+
+  # Agente Supervisor: API HTTP + cliente A2A que delega en el detector.
+  supervisor:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: packetpanic-supervisor
+    command: ["python", "-m", "supervisor.main"]
+    env_file:
+      - .env
+    environment:
+      - DEFAULT_MESSAGE_TRANSPORT=SLIM
+      - TRANSPORT_SERVER_ENDPOINT=http://slim:46357
+      - SUPERVISOR_HOST=0.0.0.0
+      - SUPERVISOR_PORT=8000
+    volumes:
+      # CAs corporativas (montadas, no horneadas). Coloca tus .pem/.crt aquí.
+      - ./docker/certs:/certs:ro
+    ports:
+      - "8000:8000"
+    depends_on:
+      - slim
+      - detector

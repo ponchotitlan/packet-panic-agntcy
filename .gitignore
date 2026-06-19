@@ -1,0 +1,29 @@
+.github/skills
+
+# Entornos de Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Variables de entorno y secretos
+.env
+.env.local
+
+# CAs corporativas montadas (provistas por el usuario, no versionar)
+docker/certs/*
+!docker/certs/.gitkeep
+
+# Herramientas y caché
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+uv.lock
+
+# Editor / SO
+.DS_Store
+.idea/
