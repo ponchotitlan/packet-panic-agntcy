@@ -117,6 +117,11 @@ class SupervisorAgent:
         self._tools = [self._make_query_detector_tool()]
         self._llm = get_llm().bind_tools(self._tools)
 
+    @property
+    def detector_topic(self) -> str:
+        """Tópico A2A del detector descubierto en el Agent Directory."""
+        return self._detector_topic
+
     def _make_query_detector_tool(self):
         """Crea la herramienta LangChain que delega en el detector."""
 
@@ -169,6 +174,15 @@ class SupervisorAgent:
             response = await client.send_message(request)
         except TimeoutError as exc:
             raise TransportTimeoutError(str(exc)) from exc
+        except AttributeError as exc:
+            # Cuando la sesión SLIM agota el tiempo de espera, el transporte
+            # registra el error y devuelve `None`. El protocolo A2A intenta
+            # entonces acceder a `response.payload` sobre ese `None`, lo que
+            # produce un `AttributeError` dentro de `send_message`. Lo
+            # tratamos como el timeout que realmente es.
+            raise TransportTimeoutError(
+                f"El detector no respondió en {A2A_REQUEST_TIMEOUT} s."
+            ) from exc
         if response is None:
             raise TransportTimeoutError(
                 f"El detector no respondió en {A2A_REQUEST_TIMEOUT} s."

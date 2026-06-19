@@ -40,6 +40,23 @@ app.add_middleware(
 supervisor_agent = SupervisorAgent(factory=factory)
 
 
+@app.on_event("startup")
+async def log_detector_registration() -> None:
+    """Registra el detector descubierto para verificar la conectividad.
+
+    No es bloqueante ni fatal: solo confirma en los logs que el supervisor
+    resolvió al detector en el Agent Directory. Si la línea no aparece, la
+    causa de los timeouts está en el descubrimiento/registro, no en el LLM.
+    """
+    try:
+        logger.info(
+            "Supervisor listo. Detector descubierto en el tópico A2A: %s",
+            supervisor_agent.detector_topic,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.error("No se pudo resolver el detector al arrancar: %s", exc)
+
+
 class PromptRequest(BaseModel):
     """Cuerpo de la solicitud de consulta del operador."""
 

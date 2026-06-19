@@ -38,6 +38,18 @@ DETECTOR_AGENT_PORT = int(os.getenv("DETECTOR_AGENT_PORT", "9999"))
 SUPERVISOR_HOST = os.getenv("SUPERVISOR_HOST", "0.0.0.0")
 SUPERVISOR_PORT = int(os.getenv("SUPERVISOR_PORT", "8000"))
 
+# --- Servidor MCP de pyATS (consultas reales a la red) ---
+# Cuando está habilitado, el Agente Detector carga sus herramientas desde el
+# servidor MCP de pyATS en lugar de los datos *dummy*.
+PYATS_MCP_ENABLED = os.getenv("PYATS_MCP_ENABLED", "true").lower() == "true"
+# Transporte del servidor MCP: "http" (streamable HTTP, ruta /mcp) o "sse".
+PYATS_MCP_TRANSPORT = os.getenv("PYATS_MCP_TRANSPORT", "http")
+PYATS_MCP_HOST = os.getenv("PYATS_MCP_HOST", "0.0.0.0")
+PYATS_MCP_PORT = int(os.getenv("PYATS_MCP_PORT", "8082"))
+# URL completa para alcanzar el servidor MCP. En Docker Compose el host es el
+# nombre del servicio (`pyats-mcp`). Si se deja vacía, se deriva de host/puerto.
+PYATS_MCP_URL = os.getenv("PYATS_MCP_URL", "")
+
 # --- Proveedor de LLM (gestionado vía LiteLLM) ---
 # Ejemplos: "openai/gpt-4o", "azure/<deployment>", "groq/<modelo>".
 LLM_MODEL = os.getenv("LLM_MODEL", "openai/gpt-4o-mini")
@@ -47,7 +59,10 @@ OTLP_HTTP_ENDPOINT = os.getenv("OTLP_HTTP_ENDPOINT", "http://localhost:4318")
 OTEL_SDK_DISABLED = os.getenv("OTEL_SDK_DISABLED", "false").lower() == "true"
 
 # --- Tiempos de espera ---
-A2A_REQUEST_TIMEOUT = int(os.getenv("A2A_REQUEST_TIMEOUT", "60"))
+# El detector ejecuta un ciclo ReAct (LLM + herramientas pyATS/MCP) que puede
+# tardar bastante, por lo que el valor por defecto es generoso. Ajustable con
+# la variable de entorno `A2A_REQUEST_TIMEOUT` (en segundos).
+A2A_REQUEST_TIMEOUT = int(os.getenv("A2A_REQUEST_TIMEOUT", "120"))
 
 # --- Nivel de logs ---
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO").upper()

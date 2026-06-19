@@ -34,11 +34,15 @@ services:
     environment:
       - DEFAULT_MESSAGE_TRANSPORT=SLIM
       - TRANSPORT_SERVER_ENDPOINT=http://slim:46357
+      # Servidor MCP de pyATS para consultas reales a la red.
+      - PYATS_MCP_ENABLED=true
+      - PYATS_MCP_URL=http://pyats-mcp:${PYATS_MCP_PORT}/mcp
     volumes:
       # CAs corporativas (montadas, no horneadas). Coloca tus .pem/.crt aquí.
       - ./docker/certs:/certs:ro
     depends_on:
       - slim
+      - pyats-mcp
 
   # Agente Supervisor: API HTTP + cliente A2A que delega en el detector.
   supervisor:
@@ -62,3 +66,21 @@ services:
     depends_on:
       - slim
       - detector
+
+  pyats-mcp:
+    build:
+      context: https://github.com/ponchotitlan/pyATS_MCP.git
+      dockerfile: Dockerfile
+    image: pyats-mcp:latest
+    container_name: pyats-mcp
+    environment:
+      MCP_TRANSPORT: ${PYATS_MCP_TRANSPORT}
+      MCP_HOST: ${PYATS_MCP_HOST}
+      MCP_PORT: ${PYATS_MCP_PORT}
+      PYATS_MCP_ARTIFACTS_DIR: /app/artifacts
+      PYATS_MCP_KEEP_ARTIFACTS: ${PYATS_MCP_KEEP_ARTIFACTS}
+    volumes:
+      - ./testbed.yaml:/app/testbed.yaml:ro
+    ports:
+      - "${PYATS_MCP_PORT}:${PYATS_MCP_PORT}"
+    restart: unless-stopped
