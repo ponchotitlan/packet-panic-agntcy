@@ -19,8 +19,8 @@ logger = logging.getLogger("packetpanic.detector.executor")
 class DetectorAgentExecutor(AgentExecutor):
     """Ejecuta el `DetectorAgent` en respuesta a las solicitudes A2A."""
 
-    def __init__(self) -> None:
-        self.agent = DetectorAgent()
+    def __init__(self, agent: DetectorAgent | None = None) -> None:
+        self.agent = agent or DetectorAgent()
 
     async def execute(
         self,

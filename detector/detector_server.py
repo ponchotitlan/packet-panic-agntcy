@@ -19,6 +19,8 @@ from agntcy_app_sdk.app_sessions import AppContainer
 from agntcy_app_sdk.factory import AgntcyFactory
 from agntcy_app_sdk.semantic.a2a.protocol import A2AProtocol
 from dotenv import load_dotenv
+from ioa_observe.sdk import Observe
+from ioa_observe.sdk.instruments import Instruments
 from uvicorn import Config, Server
 
 from config.config import (
@@ -26,8 +28,10 @@ from config.config import (
     DETECTOR_AGENT_HOST,
     DETECTOR_AGENT_PORT,
     OTEL_SDK_DISABLED,
+    OTLP_HTTP_ENDPOINT,
     TRANSPORT_SERVER_ENDPOINT,
 )
+from detector.agent import DetectorAgent
 from detector.agent_executor import DetectorAgentExecutor
 from detector.card import AGENT_CARD
 
@@ -35,14 +39,36 @@ load_dotenv()
 
 logger = logging.getLogger("packetpanic.detector.server")
 
+# Inicializa el Observe SDK (OpenTelemetry) y exporta las trazas al colector
+# OTLP/HTTP antes de crear la factory para instrumentar correctamente.
+#
+# Para la demo dejamos solo la instrumentación de LangChain: así las trazas
+# muestran con claridad el uso del LLM, las herramientas (MCP de pyATS) y los
+# spans de agente. Las llamadas agente-a-agente (A2A/SLIM) y los decoradores
+# `@agent`/`@graph` se instrumentan aparte (vía la AgntcyFactory y el SDK), por
+# lo que se conservan. Restringir aquí evita el ruido de los instrumentadores
+# HTTP (requests/urllib3) que generan un span por cada petición saliente.
+Observe.init(
+    "packetpanic.detector",
+    api_endpoint=OTLP_HTTP_ENDPOINT,
+    enabled=not OTEL_SDK_DISABLED,
+    instruments={Instruments.LANGCHAIN},
+)
+
 # Factory multi-protocolo/multi-transporte de AGNTCY.
 factory = AgntcyFactory("packetpanic.detector", enable_tracing=not OTEL_SDK_DISABLED)
 
 
 async def main() -> None:
     """Arranca el servidor del detector con el transporte configurado."""
+    # Carga las herramientas del MCP de pyATS y construye el grafo en el
+    # arranque, para que la primera invocación del supervisor no pague el
+    # coste de inicialización.
+    agent = DetectorAgent()
+    await agent.initialize()
+
     request_handler = DefaultRequestHandler(
-        agent_executor=DetectorAgentExecutor(),
+        agent_executor=DetectorAgentExecutor(agent),
         task_store=InMemoryTaskStore(),
     )
 

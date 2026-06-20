@@ -37,12 +37,18 @@ services:
       # Servidor MCP de pyATS para consultas reales a la red.
       - PYATS_MCP_ENABLED=true
       - PYATS_MCP_URL=http://pyats-mcp:${PYATS_MCP_PORT}/mcp
+      # Colector OTLP/HTTP (Jaeger) dentro de la red de Compose.
+      - OTLP_HTTP_ENDPOINT=http://jaeger:4318
+      # Jaeger solo ingiere trazas; desactiva el export de métricas OTLP
+      # (no tiene endpoint /v1/metrics) para evitar errores 404.
+      - OBSERVE_METRICS_ENABLED=false
     volumes:
       # CAs corporativas (montadas, no horneadas). Coloca tus .pem/.crt aquí.
       - ./docker/certs:/certs:ro
     depends_on:
       - slim
       - pyats-mcp
+      - jaeger
 
   # Agente Supervisor: API HTTP + cliente A2A que delega en el detector.
   supervisor:
@@ -58,6 +64,11 @@ services:
       - TRANSPORT_SERVER_ENDPOINT=http://slim:46357
       - SUPERVISOR_HOST=0.0.0.0
       - SUPERVISOR_PORT=8000
+      # Colector OTLP/HTTP (Jaeger) dentro de la red de Compose.
+      - OTLP_HTTP_ENDPOINT=http://jaeger:4318
+      # Jaeger solo ingiere trazas; desactiva el export de métricas OTLP
+      # (no tiene endpoint /v1/metrics) para evitar errores 404.
+      - OBSERVE_METRICS_ENABLED=false
     volumes:
       # CAs corporativas (montadas, no horneadas). Coloca tus .pem/.crt aquí.
       - ./docker/certs:/certs:ro
@@ -66,6 +77,7 @@ services:
     depends_on:
       - slim
       - detector
+      - jaeger
 
   pyats-mcp:
     build:
@@ -83,4 +95,18 @@ services:
       - ./testbed.yaml:/app/testbed.yaml:ro
     ports:
       - "${PYATS_MCP_PORT}:${PYATS_MCP_PORT}"
+    restart: unless-stopped
+
+  # Colector de trazas OTEL: Jaeger all-in-one con receptor OTLP habilitado.
+  # Recibe las trazas del supervisor y del detector (OTLP/HTTP en 4318) y las
+  # expone en la UI web (http://localhost:16686).
+  jaeger:
+    image: jaegertracing/all-in-one:1.60
+    container_name: packetpanic-jaeger
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"  # UI web de Jaeger
+      - "4318:4318"    # OTLP/HTTP
+      - "4317:4317"    # OTLP/gRPC
     restart: unless-stopped

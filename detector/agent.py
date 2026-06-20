@@ -110,6 +110,15 @@ class DetectorAgent:
             self._agent = self.build_graph(tools)
         return self._agent
 
+    async def initialize(self) -> None:
+        """Carga las herramientas MCP y construye el grafo de forma anticipada.
+
+        Pensado para llamarse una vez al arrancar el servidor, de modo que
+        las herramientas del MCP de pyATS se carguen en el init y no en la
+        primera invocación del supervisor.
+        """
+        await self._ensure_agent()
+
     async def ainvoke(self, prompt: str) -> str:
         """Procesa una instrucción y devuelve el diagnóstico en texto.
 

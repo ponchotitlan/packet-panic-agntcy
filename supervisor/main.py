@@ -15,15 +15,39 @@ from agntcy_app_sdk.factory import AgntcyFactory
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from ioa_observe.sdk import Observe
+from ioa_observe.sdk.instruments import Instruments
 from ioa_observe.sdk.tracing import session_start
 from pydantic import BaseModel
 
-from config.config import OTEL_SDK_DISABLED, SUPERVISOR_HOST, SUPERVISOR_PORT
+from config.config import (
+    OTEL_SDK_DISABLED,
+    OTLP_HTTP_ENDPOINT,
+    SUPERVISOR_HOST,
+    SUPERVISOR_PORT,
+)
 from supervisor.agent import SupervisorAgent
 from supervisor.errors import RemoteAgentNoResponseError, TransportTimeoutError
 
 logger = logging.getLogger("packetpanic.supervisor.main")
 load_dotenv()
+
+# Inicializa el Observe SDK (OpenTelemetry) y exporta las trazas al colector
+# OTLP/HTTP. Debe ejecutarse antes de crear la factory para que el tracing
+# quede correctamente instrumentado.
+#
+# Para la demo dejamos solo la instrumentación de LangChain: así las trazas
+# muestran con claridad el uso del LLM, las herramientas (MCP de pyATS) y los
+# spans de agente. Las llamadas agente-a-agente (A2A/SLIM) y los decoradores
+# `@agent`/`@graph` se instrumentan aparte (vía la AgntcyFactory y el SDK), por
+# lo que se conservan. Restringir aquí evita el ruido de los instrumentadores
+# HTTP (requests/urllib3) que generan un span por cada petición saliente.
+Observe.init(
+    "packetpanic.supervisor",
+    api_endpoint=OTLP_HTTP_ENDPOINT,
+    enabled=not OTEL_SDK_DISABLED,
+    instruments={Instruments.LANGCHAIN},
+)
 
 # Factory de AGNTCY compartida por el supervisor.
 factory = AgntcyFactory("packetpanic.supervisor", enable_tracing=not OTEL_SDK_DISABLED)
