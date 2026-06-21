@@ -31,9 +31,9 @@ from config.config import (
     OTLP_HTTP_ENDPOINT,
     TRANSPORT_SERVER_ENDPOINT,
 )
-from detector.agent import DetectorAgent
-from detector.agent_executor import DetectorAgentExecutor
-from detector.card import AGENT_CARD
+from agents.detector.agent import DetectorAgent
+from agents.detector.agent_executor import DetectorAgentExecutor
+from agents.detector.card import AGENT_CARD
 
 load_dotenv()
 

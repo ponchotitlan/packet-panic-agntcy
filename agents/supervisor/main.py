@@ -26,8 +26,8 @@ from config.config import (
     SUPERVISOR_HOST,
     SUPERVISOR_PORT,
 )
-from supervisor.agent import SupervisorAgent
-from supervisor.errors import RemoteAgentNoResponseError, TransportTimeoutError
+from agents.supervisor.agent import SupervisorAgent
+from agents.supervisor.errors import RemoteAgentNoResponseError, TransportTimeoutError
 
 logger = logging.getLogger("packetpanic.supervisor.main")
 load_dotenv()
@@ -140,7 +140,7 @@ async def suggested_prompts() -> dict:
 
 if __name__ == "__main__":
     uvicorn.run(
-        "supervisor.main:app",
+        "agents.supervisor.main:app",
         host=SUPERVISOR_HOST,
         port=SUPERVISOR_PORT,
         reload=False,

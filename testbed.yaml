@@ -1,9 +1,9 @@
-# Testbed based on the devices avilable in the Cisco Modeling Labs - Always-On Sandbox
-# You can reserve and launch it for free at https://devnetsandbox.cisco.com/DevNet/catalog/cml-sandbox_cml
-# Make sue to login to the address provided via e-mail using a VPN client
-# This VPN shall be deployed in the same environment where this MCP server is located at
+# Testbed basado en los dispositivos disponibles en el Cisco Modeling Labs - Always-On Sandbox
+# Puedes reservarlo y arrancarlo gratis en https://devnetsandbox.cisco.com/DevNet/catalog/cml-sandbox_cml
+# Asegúrate de iniciar sesión en la dirección que te llega por correo usando un cliente VPN
+# Esta VPN debe desplegarse en el mismo entorno donde se encuentra este servidor MCP
 
-# If you wish to provide your own devices, please follow the structure below and adjust the parameters accordingly
+# Si quieres usar tus propios dispositivos, sigue la estructura de abajo y ajusta los parámetros según corresponda
 ---
 devices:
   R1:

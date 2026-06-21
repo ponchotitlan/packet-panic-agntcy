@@ -28,7 +28,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     container_name: packetpanic-detector
-    command: ["python", "-m", "detector.detector_server"]
+    command: ["python", "-m", "agents.detector.detector_server"]
     env_file:
       - .env
     environment:
@@ -56,7 +56,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     container_name: packetpanic-supervisor
-    command: ["python", "-m", "supervisor.main"]
+    command: ["python", "-m", "agents.supervisor.main"]
     env_file:
       - .env
     environment:

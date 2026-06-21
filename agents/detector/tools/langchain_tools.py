@@ -4,9 +4,9 @@
 """Herramientas LangChain que exponen la red al Agente Detector.
 
 El detector prefiere las herramientas reales del servidor MCP de pyATS
-(`detector.tools.mcp_client`). Si el servidor MCP está deshabilitado o no se
+(`agents.detector.tools.mcp_client`). Si el servidor MCP está deshabilitado o no se
 puede alcanzar, recurre a las envolturas *dummy* sobre
-`detector.tools.dummy_network` para que la demo siga funcionando.
+`agents.detector.tools.dummy_network` para que la demo siga funcionando.
 """
 
 import json
@@ -15,8 +15,8 @@ import logging
 from langchain_core.tools import BaseTool, tool
 
 from config.config import PYATS_MCP_ENABLED
-from detector.tools import dummy_network
-from detector.tools.mcp_client import load_pyats_tools
+from agents.detector.tools import dummy_network
+from agents.detector.tools.mcp_client import load_pyats_tools
 
 logger = logging.getLogger("packetpanic.detector.tools")
 

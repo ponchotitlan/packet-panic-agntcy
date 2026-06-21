@@ -11,7 +11,7 @@ from a2a.types import UnsupportedOperationError
 from a2a.utils import new_agent_text_message, new_task
 from a2a.utils.errors import ServerError
 
-from detector.agent import DetectorAgent
+from agents.detector.agent import DetectorAgent
 
 logger = logging.getLogger("packetpanic.detector.executor")
 

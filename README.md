@@ -1,19 +1,58 @@
-# Packet Panic — NOC con dos agentes sobre AGNTCY
+# Packet Panic 📦🔥 AGNTCY
+## Caso de Uso de un MAS (Multi-Agent System) construido sobre el ecosistema [AGNTCY](https://docs.agntcy.org/)
 
-Sistema de **dos agentes** para un NOC (Network Operations Center), construido
-sobre el ecosistema [AGNTCY](https://docs.agntcy.org/) (Internet of Agents) y
-siguiendo el patrón de referencia **Corto** de
-[CoffeeAGNTCY](https://github.com/agntcy/coffeeAgntcy).
+<div align="center">
+<img src="https://img.shields.io/badge/Cisco-pyATS-049fd9?style=flat-square&logo=cisco&logoColor=white" alt="Cisco pyATS">
+<img src="https://img.shields.io/badge/MCP-Protocol-000000?style=flat-square&logo=anthropic&logoColor=white" alt="MCP">
+<img src="https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
+<img src="https://img.shields.io/badge/Docker-Required-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker">
+<img src="https://img.shields.io/badge/AGNTCY-app--sdk%20v0.4.7-6E56CF?style=flat-square&logoColor=white" alt="AGNTCY">
+<img src="https://img.shields.io/badge/SLIM-1.4.0-7B61FF?style=flat-square&logoColor=white" alt="SLIM">
+<img src="https://img.shields.io/badge/OASF-Ready-3DDC84?style=flat-square&logoColor=white" alt="OASF">
+<img src="https://img.shields.io/badge/A2A-SDK%20v0.3.2-FF6F61?style=flat-square&logoColor=white" alt="A2A">
+<img src="https://img.shields.io/badge/LangGraph-1.0-1C3C3C?style=flat-square&logo=langchain&logoColor=white" alt="LangGraph">
+<img src="https://img.shields.io/badge/Jaeger-1.60-66CFE3?style=flat-square&logo=jaeger&logoColor=white" alt="Jaeger">
+</div>
 
-- **Agente Supervisor**: el cerebro del NOC. Atiende al operador, razona y
-  **delega** en el detector cuando necesita datos de la red. No toca los
-  dispositivos.
-- **Agente Detector**: tiene el **acceso a la red**. Hoy responde con **datos
-  *dummy*** deterministas; mañana se conectará a un **servidor MCP** sin cambiar
-  el grafo del agente.
+---
 
-Los dos agentes se comunican mediante **A2A** (Agent-to-Agent) sobre el
-transporte **SLIM** de AGNTCY.
+## Índice
+
+- [En pocas palabras](#en-pocas-palabras)
+- [Diseño](#diseño)
+  - [Arquitectura](#arquitectura)
+  - [Cómo funciona](#cómo-funciona)
+- [Estructura del proyecto](#estructura-del-proyecto)
+- [Primeros pasos](#primeros-pasos)
+  - [Requisitos](#requisitos)
+  - [1. Configurar variables de entorno](#1-configurar-variables-de-entorno)
+  - [2. El testbed de pyATS](#2-el-testbed-de-pyats)
+  - [3. Servicios con Docker Compose](#3-servicios-con-docker-compose)
+  - [4. Probar el sistema](#4-probar-el-sistema)
+- [Explorando las trazas en Jaeger](#explorando-las-trazas-en-jaeger)
+- [Apéndice](#apéndice)
+  - [Acceso a la red: pyATS vía MCP](#acceso-a-la-red-pyats-vía-mcp)
+  - [Registros OASF (Agent Directory)](#registros-oasf-agent-directory)
+- [Contribuciones](#-contribuciones)
+
+---
+
+## En pocas palabras
+
+**Packet Panic** es un sistema de dos agentes de IA que ayudan a consultar y diagnosticar una red de datos,
+tal y como lo haría un equipo de NOC (Network Operations Center). Tú escribes una
+pregunta en lenguaje natural, por ejemplo `"¿hay errores en las interfaces de
+R1?"` y los agentes se encargan del resto:
+
+- 🧠 Un **Supervisor** recibe tu consulta, razona qué hace falta y delega.
+- 🔍 Un **Detector** se conecta a los dispositivos de red reales (vía pyATS con un servidor MCP), corre
+  los comandos adecuados y regresa un diagnóstico.
+
+Ambos agentes platican entre sí usando las piezas del ecosistema **AGNTCY** (A2A,
+SLIM, Agent Directory, MCP y observabilidad con Jaeger). Si no tienes acceso a una
+red de verdad, el sistema usa datos *dummy* para que puedas probarlo sin
+complicaciones. En resumen: **le preguntas a tu red en español y un par de agentes
+te contestan con el diagnóstico.**
 
 ---
 
@@ -21,64 +60,81 @@ transporte **SLIM** de AGNTCY.
 
 | Componente AGNTCY | En este proyecto | Rol |
 |---|---|---|
-| App SDK (`AgntcyFactory`) | Ambos agentes | Construye clientes/servidores A2A agnósticos al transporte. |
-| SLIM | `slim` (contenedor) | Bus de mensajería seguro entre agentes. |
-| A2A + `AgentCard` | `detector/card.py` | Manifiesto de capacidades del detector. |
-| LangGraph | `detector/agent.py`, `supervisor/agent.py` | Orquestación dentro de cada agente. |
-| Observe SDK | decoradores `@agent`, `@graph` | Trazabilidad de extremo a extremo. |
-| MCP *(futuro)* | `detector/tools/` | Capa de acceso a dispositivos (hoy *dummy*). |
+| 🏗️ App SDK (`AgntcyFactory`) | Ambos agentes | Construye clientes/servidores A2A agnósticos al transporte |
+| 🚌 SLIM | `slim` (contenedor) | Bus de mensajería seguro entre agentes |
+| 🤝 A2A + `AgentCard` | `agents/detector/card.py` | Manifiesto de capacidades del detector |
+| 📒 Agent Directory (OASF) | `common/directory.py`, `oasf/agents/` | Descubrimiento dinámico del detector por capacidad |
+| 🕸️ LangGraph | `agents/detector/agent.py`, `agents/supervisor/agent.py` | Orquestación dentro de cada agente |
+| 🔭 Observe SDK + Jaeger | decoradores `@agent`, `@graph`; servicio `jaeger` | Trazabilidad OpenTelemetry de extremo a extremo |
+| 🔌 MCP (pyATS) | `agents/detector/tools/mcp_client.py`, `pyats-mcp` (contenedor) | Acceso a dispositivos de red reales (Cisco/pyATS) |
 
 ### Arquitectura
 
 ```mermaid
-flowchart LR
-    OP[Operador / API / UI] -->|POST /agent/prompt| SUP
+flowchart TB
+    OP[👤 Operador / API / UI] -->|POST /agent/prompt| SUP
 
-    subgraph SUP[Agente Supervisor]
-        API[FastAPI] --> LLMS[LLM + herramienta query_detector]
+    subgraph SUP[🧠 Agente Supervisor]
+        API[⚡ FastAPI] --> LLMS[🤖 LLM + herramienta query_detector]
     end
 
-    LLMS -->|A2A sobre SLIM| SLIM{{Gateway SLIM}}
+    DIR[(📒 Agent Directory<br/>registros OASF)] -.descubre por skill.-> LLMS
+
+    LLMS -->|A2A sobre SLIM| SLIM{{🚌 Gateway SLIM}}
     SLIM -->|A2A| DET
 
-    subgraph DET[Agente Detector - servidor A2A]
-        EXEC[AgentExecutor] --> RG[Grafo ReAct LangGraph]
-        RG --> TOOLS[Herramientas de red]
+    subgraph DET[🔍 Agente Detector - servidor A2A]
+        EXEC[🔗 AgentExecutor] --> RG[🕸️ Grafo ReAct LangGraph]
+        RG --> TOOLS[🛠️ Herramientas de red]
     end
 
-    TOOLS --> DUMMY[(Datos dummy de red<br/>hoy → MCP mañana)]
+    TOOLS -->|MCP| MCP[(🔌 Servidor MCP pyATS)]
+    MCP --> NET[( 🤖 Dispositivos de red<br/>testbed.yaml)]
+    TOOLS -.respaldo.-> DUMMY[(🧪 Datos dummy<br/>si el MCP no responde)]
 
-    SUP -.trazas OTEL.-> OBS[(Observe SDK)]
+    SUP -.trazas OTEL.-> OBS[(🔭 Jaeger)]
     DET -.trazas OTEL.-> OBS
 ```
 
-### Flujo de trabajo
+### Cómo funciona
 
 1. El operador envía una consulta a `POST /agent/prompt` del **Supervisor**.
-2. El LLM del supervisor decide si necesita datos de la red. Si sí, llama a su
+2. El supervisor **descubre** al detector en el **Agent Directory** por su
+   capacidad OASF (`performance_monitoring`) y abre la sesión A2A hacia él.
+3. El LLM del supervisor decide si necesita datos de la red. Si sí, llama a su
    herramienta `query_detector` con una instrucción específica.
-3. La herramienta envía un mensaje **A2A** al **Detector** a través del **gateway
+4. La herramienta envía un mensaje **A2A** al **Detector** a través del **gateway
    SLIM**.
-4. El **Detector** (agente ReAct) elige las herramientas de red adecuadas
-   (`list_devices`, `device_health`, `interface_stats`, `link_diagnostics`),
-   consulta los **datos dummy** y redacta un diagnóstico.
-5. El diagnóstico regresa por A2A al supervisor, que **sintetiza** la respuesta
+5. El **Detector** (agente ReAct) elige las herramientas de pyATS adecuadas
+   (`pyats_list_devices`, `pyats_run_show_command`,
+   `pyats_ping_from_network_device`, `pyats_show_logging`), consulta los
+   **dispositivos reales** vía el **servidor MCP de pyATS** y redacta un
+   diagnóstico. Si el MCP no está disponible, usa las herramientas dummy.
+6. El diagnóstico regresa por A2A al supervisor, que **sintetiza** la respuesta
    final para el operador.
+
+   </br></br>
 
 ```mermaid
 sequenceDiagram
-    participant OP as Operador
-    participant SUP as Supervisor
-    participant SLIM as Gateway SLIM
-    participant DET as Detector
-    participant NET as Datos de red (dummy)
+    participant OP as 👤 Operador
+    participant SUP as 🧠 Supervisor
+    participant DIR as 📒 Agent Directory
+    participant SLIM as 🚌 Gateway SLIM
+    participant DET as 🔍 Detector
+    participant MCP as 🔌 MCP pyATS
+    participant NET as 🤖 Dispositivos de Red
 
     OP->>SUP: POST /agent/prompt
+    SUP->>DIR: Busca detector por skill (performance_monitoring)
+    DIR-->>SUP: AgentCard del detector
     SUP->>SUP: LLM decide → query_detector
     SUP->>SLIM: Mensaje A2A
     SLIM->>DET: Mensaje A2A
-    DET->>NET: list_devices / interface_stats / diagnose_link
-    NET-->>DET: Telemetría
+    DET->>MCP: pyats_list_devices / run_show_command / ping
+    MCP->>NET: SSH/Telnet (pyATS)
+    NET-->>MCP: Salida de comandos
+    MCP-->>DET: Telemetría
     DET-->>SLIM: Diagnóstico
     SLIM-->>SUP: Diagnóstico
     SUP->>SUP: LLM sintetiza
@@ -91,15 +147,23 @@ sequenceDiagram
 
 ```
 packet-panic-agntcy/
-├── docker-compose.yaml          # Gateway SLIM + detector + supervisor
+├── docker-compose.yaml          # Contenedored de SLIM + detector + supervisor + pyATS MCP + Jaeger
 ├── pyproject.toml               # Dependencias del proyecto
+├── testbed.yaml                 # Inventario pyATS (dispositivos de red reales)
 ├── .env.example                 # Plantilla de variables de entorno
 │
+├── docker/
+│   ├── Dockerfile               # Imagen común de los agentes
+│   ├── entrypoint.sh            # Arranque (carga de CAs corporativas, etc.)
+│   ├── slim-config.yaml         # Configuración del gateway SLIM
+│   └── certs/                   # CAs corporativas montadas (no horneadas)
+│
 ├── config/
-│   ├── config.py                # Endpoints, transporte, modelo LLM, timeouts
+│   ├── config.py                # Endpoints, transporte, MCP, LLM, OTEL, timeouts
 │   └── logging_config.py        # Configuración de logs
 ├── common/
-│   └── llm.py                   # Cliente LLM vía LiteLLM
+│   ├── llm.py                   # Cliente LLM vía LiteLLM
+│   └── directory.py             # Descubrimiento de agentes por capacidad OASF
 │
 ├── oasf/
 │   └── agents/                  # Registros OASF (manifiestos para el Agent Directory)
@@ -109,19 +173,21 @@ packet-panic-agntcy/
 ├── scripts/
 │   └── directory_demo.sh        # Demo: publica y descubre agentes por capacidad
 │
-├── supervisor/                  # ← Agente Supervisor (cliente A2A)
-│   ├── main.py                  # API FastAPI: /agent/prompt
-│   ├── agent.py                 # LangGraph + herramienta query_detector
-│   └── errors.py                # Manejo de timeouts / sin respuesta
-│
-└── detector/                    # ← Agente Detector (servidor A2A)
-    ├── detector_server.py       # Arranque del transporte SLIM + A2A
-    ├── agent.py                 # Grafo ReAct del detector
-    ├── agent_executor.py        # Adaptador A2A → grafo
-    ├── card.py                  # AgentCard (capacidades)
-    └── tools/
-        ├── dummy_network.py     # Datos dummy (se reemplaza por MCP)
-        └── langchain_tools.py   # Herramientas LangChain del detector
+└── agents/                      # ← Los dos agentes del NOC
+    ├── supervisor/              # ← Agente Supervisor (cliente A2A)
+    │   ├── main.py              # API FastAPI: /agent/prompt
+    │   ├── agent.py             # LangGraph + query_detector + descubrimiento
+    │   └── errors.py            # Manejo de timeouts / sin respuesta
+    │
+    └── detector/               # ← Agente Detector (servidor A2A)
+        ├── detector_server.py  # Arranque del transporte SLIM + A2A
+        ├── agent.py            # Grafo ReAct del detector
+        ├── agent_executor.py   # Adaptador A2A → grafo
+        ├── card.py             # AgentCard (capacidades)
+        └── tools/
+            ├── mcp_client.py      # Cliente del servidor MCP de pyATS
+            ├── langchain_tools.py # Herramientas del detector (MCP con respaldo dummy)
+            └── dummy_network.py   # Datos dummy de respaldo
 ```
 
 ---
@@ -132,7 +198,8 @@ packet-panic-agntcy/
 
 - Python **3.12+**
 - Una llave de API para un proveedor de LLM (OpenAI, Azure, Groq, etc.)
-- Para la opción con contenedores: **Docker** y **Docker Compose**
+- **Docker** y **Docker Compose**
+- **Para consultar dispositivos reales:** testbed alcanzable (por defecto, usaremos [el sandbox de Cisco CML](https://devnetsandbox.cisco.com/DevNet/catalog/cml-sandbox_cml)). Sin él, el agente detector usa datos dummy.
 
 ### 1. Configurar variables de entorno
 
@@ -147,55 +214,117 @@ LLM_MODEL="openai/gpt-4o-mini"
 OPENAI_API_KEY=tu_llave_aqui
 ```
 
-> El proyecto usa **LiteLLM**, así que puedes apuntar a cualquier proveedor
+> El proyecto usa **LiteLLM**, así que puedes usar cualquier proveedor
 > compatible cambiando `LLM_MODEL` (por ejemplo `azure/<deployment>` o
-> `groq/<modelo>`).
+> `groq/<modelo>`). Consulta la lista completa de prefijos de modelo y variables
+> de API key en la [documentación de proveedores de LiteLLM](https://docs.litellm.ai/docs/providers).
 
-### Opción A — Docker Compose (recomendada)
+Variables relevantes adicionales (todas con valores por defecto):
 
-Levanta el gateway SLIM y los dos agentes:
+```env
+# Servidor MCP de pyATS (consultas reales a la red)
+PYATS_MCP_ENABLED=true            # ponlo en false para usar solo datos dummy
+PYATS_MCP_PORT=8082
+PYATS_MCP_URL=http://pyats-mcp:8082/mcp
+
+# Observabilidad (trazas OTEL → Jaeger)
+OTEL_SDK_DISABLED=true            # ponlo en false para exportar trazas a Jaeger
+OTLP_HTTP_ENDPOINT=http://localhost:4318
+```
+
+### 2. El testbed de pyATS
+
+El detector consulta dispositivos reales descritos en
+[`testbed.yaml`](testbed.yaml). Por defecto apunta a los routers y switches del
+**Cisco Modeling Labs — Always-On Sandbox** (`R1`, `R2`, `SW1`, `SW2`, IOS-XE),
+que puedes reservar gratis en
+[DevNet Sandbox](https://devnetsandbox.cisco.com/DevNet/catalog/cml-sandbox_cml).
+Necesitas el cliente VPN del sandbox activo para alcanzar esos dispositivos.
+Puedes sustituir `testbed.yaml` por tu propio inventario manteniendo la misma
+estructura.
+
+### 3. Servicios con Docker Compose
+
+Levanta el gateway SLIM, los dos agentes, el servidor MCP de pyATS y Jaeger:
 
 ```sh
 docker compose up --build
 ```
 
-El supervisor queda disponible en `http://localhost:8000`.
+**¡Listo!** Tus agentes y recursos están funcionando. Para validar, puedes enlistar tus contenedores activos. Deberías encontrar los soguientes:
 
-### Opción B — Python local
-
-Cada componente corre en su propia terminal. El transporte por defecto es SLIM,
-así que primero necesitas el gateway (vía Docker):
-
-```sh
-# Terminal 1: gateway SLIM
-docker compose up slim
+```bash
+docker ps | grep packetpanic
 ```
 
-```sh
-# Instala dependencias (recomendado con uv o venv)
-python -m venv .venv && source .venv/bin/activate
-pip install -e .
+```bash
+4fdd65981ba7   packet-panic-agntcy-supervisor   "/usr/local/bin/entr…"   54 seconds ago   Up 54 seconds   0.0.0.0:8000->8000/tcp    packetpanic-supervisor
+c4db18172507   packet-panic-agntcy-detector     "/usr/local/bin/entr…"   55 seconds ago   Up 54 seconds    packetpanic-detector
+e707574b2a96   jaegertracing/all-in-one:1.60    "/go/bin/all-in-one-…"   55 seconds ago   Up 54 seconds   5775/udp, 5778/tcp, 9411/tcp, 14250/tcp, 0.0.0.0:4317-4318->4317-4318/tcp, 0.0.0.0:16686->16686/tcp, 6831-6832/udp, 14268/tcp   packetpanic-jaeger
+bb2dcab2c147   ghcr.io/agntcy/slim:1.4.0        "/slim --config /con…"   55 seconds ago   Up 54 seconds   0.0.0.0:46357->46357/tcp    packetpanic-slim
+70dd317d6f1b   ghcr.io/agntcy/dir-ctl:v1.5.0    "./dirctl daemon sta…"   55 seconds ago   Up 54 seconds    packetpanic-directory
 ```
 
-```sh
-# Terminal 2: Agente Detector
-python -m detector.detector_server
-```
+Puedes usar las siguientes URLs para interactuar con tus agentes:
 
-```sh
-# Terminal 3: Agente Supervisor (API)
-python -m supervisor.main
-```
+| Servicio | URL | Descripción |
+|----------|-----|-------------|
+| 🧠 Supervisor (API) | `http://localhost:8000` | Endpoint principal del agente supervisor. |
+| 📜 Especificación OpenAPI | `http://localhost:8000/docs` | UI para probar los endpoints desde la WebUI. |
+| 🔭 Trazas de Jaeger | `http://localhost:16686` | UI de observabilidad y trazas OTEL. |
 
-> ¿No quieres levantar SLIM? Pon `DEFAULT_MESSAGE_TRANSPORT=A2A` en `.env` para
-> que el detector sirva por HTTP nativo (sin gateway). Útil para pruebas rápidas.
 
-### 2. Probar el sistema
+### 4. Probar el sistema
+
+Es posible utilizar herramientas como `cURL` directamente en tu CLI, o bien otros clientes REST como Postman. Incluso, en la URL http://localhost:8000/docs se encuentra disponible la especificación OpenAPI del sistema, siendo posible mandar peticiones usando la Web UI.
+
+En este caso, usaremos peticiones vía `cURL` directamente en nuestra consola:
 
 ```sh
 curl -X POST http://localhost:8000/agent/prompt \
   -H "Content-Type: application/json" \
-  -d '{"prompt": "¿Hay pérdida de paquetes en TenGigE0/0/0/0 de core-rtr-01?"}'
+  -d '{"prompt": "¿Hay errores o descartes en las interfaces de R1?"}'
+```
+
+La API responde con un objeto JSON que contiene el diagnóstico en texto plano
+(campo `response`) y el identificador de la sesión (`session_id`):
+
+```json
+{
+  "response": "Resultado del análisis de R1\n\nEstado general: SALUDABLE\n\nNo se detectan errores ni descartes en ninguna interfaz de R1.\n\nInterfaces:\n1. Eth0/0  up/up        10.10.10.100/24   Errores IN: 0  Errores OUT: 0  Drops: 0\n2. Eth0/1  up/up         1.1.1.1/24       Errores IN: 0  Errores OUT: 0  Drops: 0\n3. Eth0/2  up/up        10.10.20.171/24   Errores IN: 0  Errores OUT: 0  Drops: 0\n4. Eth0/3  admin down   --                Errores IN: 0  Errores OUT: 0  Drops: 0\n\nObservaciones:\n- Los contadores nunca han sido limpiados.\n- Eth0/3 esta apagada administrativamente (shutdown).\n- Sin indicios de problemas de capa fisica (CRC, runts, giants) ni congestion (drops de cola).\n\nAccion requerida: Ninguna. Si necesitas monitoreo continuo o limpiar contadores (clear counters), indicamelo.",
+  "session_id": "packetpanic.supervisor_3c20759d-7403-496c-b10f-7d914f4342a9"
+}
+```
+
+Con un poco de Python, se puede imprimir el resultado de la siguiente manera:
+
+```bash
+curl -s -X POST http://localhost:8000/agent/prompt \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "¿Hay errores o descartes en las interfaces de R1?"}' \
+  | python3 -c 'import sys, json; print(json.load(sys.stdin)["response"])'
+```
+
+```text
+Resultado del análisis de R1
+
+Estado general: SALUDABLE
+
+No se detectan errores ni descartes en ninguna interfaz de R1.
+
+Interfaces:
+1. Eth0/0  up/up        10.10.10.100/24   Errores IN: 0  Errores OUT: 0  Drops: 0
+2. Eth0/1  up/up         1.1.1.1/24       Errores IN: 0  Errores OUT: 0  Drops: 0
+3. Eth0/2  up/up        10.10.20.171/24   Errores IN: 0  Errores OUT: 0  Drops: 0
+4. Eth0/3  admin down   --                Errores IN: 0  Errores OUT: 0  Drops: 0
+
+Observaciones:
+- Los contadores nunca han sido limpiados.
+- Eth0/3 está apagada administrativamente (shutdown).
+- Sin indicios de problemas de capa física (CRC, runts, giants) ni congestión (drops de cola).
+
+Acción requerida: Ninguna. Si necesitas monitoreo continuo o limpiar contadores
+(clear counters), indícamelo.
 ```
 
 Otros ejemplos:
@@ -203,41 +332,81 @@ Otros ejemplos:
 ```sh
 curl -X POST http://localhost:8000/agent/prompt \
   -H "Content-Type: application/json" \
-  -d '{"prompt": "Dame la salud de core-rtr-02"}'
+  -d '{"prompt": "Dame el estado de las interfaces de R2 (show ip interface brief)"}'
 
 curl -X POST http://localhost:8000/agent/prompt \
   -H "Content-Type: application/json" \
-  -d '{"prompt": "Lista los dispositivos del sitio DC-2"}'
+  -d '{"prompt": "Lista los dispositivos de mi inventario"}'
+
+curl -X POST http://localhost:8000/agent/prompt \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Haz ping desde R1 a R2 y dime si hay pérdida"}'
 ```
 
 Endpoints útiles del supervisor:
 
-- `POST /agent/prompt` — envía una consulta al NOC.
-- `GET /health` — estado del supervisor.
-- `GET /suggested-prompts` — ejemplos de consultas.
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `POST` | `/agent/prompt` | Envía una consulta al NOC. |
+| `GET` | `/health` | Estado del supervisor. |
+| `GET` | `/suggested-prompts` | Ejemplos de consultas. |
 
 ---
+## Explorando las trazas en Jaeger
 
-## Datos *dummy* de la red
+Navegando a la URL http://localhost:16686, es posible acceder a la Web UI de Jaeger y analizar los eventos en un tiempo determinado. Esto incluye las interacciones entre los dos agentes, así como los eventos dentro de cada uno de ellos.
 
-El inventario simulado vive en
-[`detector/tools/dummy_network.py`](detector/tools/dummy_network.py). Incluye
-cuatro dispositivos de ejemplo (`core-rtr-01`, `core-rtr-02`, `dist-sw-01`,
-`edge-fw-01`) en dos sitios (`DC-1`, `DC-2`). Los valores son **deterministas**:
-la misma consulta devuelve siempre el mismo resultado, ideal para demos.
+![Jaeger](./images/jaeger_traces.png)
 
-### Migrar a MCP más adelante
+Inspeccionando más a detalle, se puede consultar exactamente qué sucedió en cada evento. Por ejemplo, al filtrar por evento `execute_tool` pueden verse las llamadas del agente `detector` al servidor MCP, y exactamente cuál fue la respuesta del mismo.
 
-Cuando conectes tu servidor MCP, **solo** reemplaza el cuerpo de las funciones de
-`dummy_network.py` (`get_device_inventory`, `get_device_health`,
-`get_interface_stats`, `diagnose_link`) por llamadas al cliente MCP. Mantén las
-firmas y **ni el grafo del detector ni el supervisor necesitarán cambios**.
+![Jaeger](./images/jaeger_execute_tool.png)
+
+El payload json se encuentra disponible en cada traza.
+
+```json
+{
+  "key": "gen_ai.tool.call.arguments",
+  "type": "string",
+  "value": "{\"input_str\": \"{'device_name': 'R1', 'command': 'show interfaces'}\", \"tags\": [\"seq:step:1\"], \"metadata\": {\"ls_integration\": \"langgraph\", \"langgraph_step\": 4, \"langgraph_node\": \"tools\", \"langgraph_triggers\": [\"__pregel_push\"], \"langgraph_path\": [\"__pregel_push\", 0, false], \"langgraph_checkpoint_ns\": \"tools:c250fbd8-7b13-54e4-8da9-d34052adb12f\", \"checkpoint_ns\": \"tools:c250fbd8-7b13-54e4-8da9-d34052adb12f\", \"_meta\": {\"_fastmcp\": {\"tags\": []}}}, \"inputs\": {\"device_name\": \"R1\", \"command\": \"show interfaces\"}, \"kwargs\": {\"color\": \"green\", \"name\": null, \"tool_call_id\": \"toolu_01GY6rcF74BrZ9xVwHnEXdqR\"}}"
+}
+```
 
 ---
+# Apéndice
+## Acceso a la red: pyATS vía MCP
 
+El detector consulta la red a través de un **servidor MCP de pyATS**
+([pyATS_MCP](https://github.com/ponchotitlan/pyATS_MCP)), que se levanta como el
+servicio `pyats-mcp` en `docker-compose.yaml`. El cliente que carga sus
+herramientas vive en
+[`agents/detector/tools/mcp_client.py`](agents/detector/tools/mcp_client.py); el grafo ReAct
+del detector las enlaza automáticamente. Entre las herramientas expuestas están:
+
+- `pyats_list_devices` — lee el inventario del testbed (sin conectarse a equipos).
+- `pyats_run_show_command` — ejecuta comandos *show* en un dispositivo concreto.
+- `pyats_ping_from_network_device` — prueba conectividad desde un dispositivo.
+- `pyats_show_logging` — recupera los logs de un dispositivo.
+
+El detector adapta la sintaxis de los comandos al **OS/fabricante** de cada
+dispositivo (IOS/IOS-XE, NX-OS, IOS-XR, Junos), consultándolo primero con
+`pyats_list_devices` cuando hace falta.
+
+### Respaldo *dummy*
+
+Si `PYATS_MCP_ENABLED=false` o el servidor MCP no responde, el detector recurre
+a las herramientas *dummy* de
+[`agents/detector/tools/dummy_network.py`](agents/detector/tools/dummy_network.py). Estas
+exponen cuatro dispositivos de ejemplo (`core-rtr-01`, `core-rtr-02`,
+`dist-sw-01`, `edge-fw-01`) con valores **deterministas**, ideales para demos sin
+acceso a la red. La degradación es automática:
+[`agents/detector/tools/langchain_tools.py`](agents/detector/tools/langchain_tools.py) detecta
+el fallo del MCP y conmuta a *dummy* sin cambios en el grafo.
+
+---
 ## Registros OASF (Agent Directory)
 
-El `AgentCard` de A2A (en `detector/card.py`) es el **manifiesto en tiempo de
+El `AgentCard` de A2A (en `agents/detector/card.py`) es el **manifiesto en tiempo de
 ejecución** que usan los agentes para el *handshake* A2A. Es la misma práctica que
 sigue **CoffeeAGNTCY** (su `corto/farm/card.py`).
 
@@ -294,38 +463,24 @@ dirctl search --skill "*agent_coordination*"
 dirctl search --domain "*network_operations*"
 ```
 
-Para validar un registro contra el esquema OASF y apagar el directorio:
-
-```bash
-dirctl validate oasf/agents/noc-detector-agent.json --url https://schema.oasf.outshift.com
-docker compose --profile directory down
-```
-
-> **Agregar más agentes:** crea un nuevo `oasf/agents/<nombre>.json`, valídalo y
+> **Para agregar más agentes:** crea un nuevo `oasf/agents/<nombre>.json`, valídalo y
 > haz `push`. Aparecerá automáticamente en las búsquedas por skill/dominio. Así el
 > directorio escala más allá de estos dos agentes.
 
-> **Integración en tiempo de ejecución (siguiente paso):** hoy el supervisor
-> conoce el tópico del detector de forma directa (`detector/card.py`). Con el
-> directorio, el supervisor podría **descubrir** dinámicamente al detector por
-> skill (`search`) y luego abrir la sesión A2A hacia el agente encontrado — el
-> patrón que habilita escalar a N detectores.
+> **Integración en tiempo de ejecución (ya implementada):** el supervisor **ya
+> descubre** al detector de forma dinámica por su capacidad OASF
+> (`performance_monitoring`) en lugar de importar su `AgentCard` local. La lógica
+> vive en [`common/directory.py`](common/directory.py) y se invoca desde
+> [`agents/supervisor/agent.py`](agents/supervisor/agent.py): lee los registros de
+> `oasf/agents/`, reconstruye el `AgentCard` embebido y abre la sesión A2A hacia
+> el agente encontrado. Este es el patrón que habilita escalar a N detectores.
 
 ---
+## 🤝 Contribuciones
 
-## Seguridad y siguientes pasos
-
-- **Frontera de acceso**: solo el detector toca la red. El supervisor razona y
-  delega. Más adelante puedes reforzar esto con el **Identity Service + TBAC** de
-  AGNTCY para autorizar qué agente puede invocar las herramientas de dispositivo.
-- **Escalar a varios detectores** (por región o por fabricante): el patrón
-  *publisher/subscriber* y *group communication* de **Lungo** (el hermano mayor de
-  Corto en CoffeeAGNTCY) muestra cómo difundir a múltiples agentes.
-- **Observabilidad**: activa el **Observe SDK** (`OTEL_SDK_DISABLED=false`) y un
-  colector OTEL para ver las trazas de cada salto agente→herramienta.
+¿Tienes ideas o mejoras? ¡Las contribuciones son bienvenidas! Con toda confianza abre un issue o manda un pull request.
 
 ---
-
-## Licencia
-
-Apache-2.0.
+<div align="center"><br />
+    Hecho con ☕️ por Poncho Sandoval - <code>Developer Advocate 🥑 @ DevNet - Cisco Systems 🇵🇹</code>
+</div>

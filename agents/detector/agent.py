@@ -6,7 +6,7 @@
 El detector es un agente tipo ReAct: recibe una instrucción en lenguaje
 natural del supervisor, decide qué herramientas de red invocar y devuelve
 un diagnóstico claro. Las herramientas provienen del servidor MCP de pyATS
-(`detector.tools.mcp_client`); si el MCP no está disponible, recurre a
+(`agents.detector.tools.mcp_client`); si el MCP no está disponible, recurre a
 datos *dummy*. Como las herramientas MCP se cargan de forma asíncrona, el
 grafo se construye de forma perezosa en la primera invocación.
 """
@@ -17,7 +17,7 @@ from langgraph.prebuilt import create_react_agent
 from ioa_observe.sdk.decorators import agent, graph
 
 from common.llm import get_llm
-from detector.tools.langchain_tools import get_detector_tools
+from agents.detector.tools.langchain_tools import get_detector_tools
 
 logger = logging.getLogger("packetpanic.detector.agent")
 
@@ -38,6 +38,17 @@ _SYSTEM_PROMPT = (
     "Si no encuentras el dispositivo o la interfaz, dilo explícitamente y "
     "sugiere los nombres válidos que devuelven las herramientas. "
     "No inventes datos: básate solo en lo que devuelven las herramientas.\n\n"
+    "FORMATO DE SALIDA (obligatorio):\n"
+    "- Responde SIEMPRE en texto plano simple, pensado para mostrarse en una "
+    "consola/terminal a través de una API REST.\n"
+    "- NO uses Markdown ni ningún formato enriquecido: nada de asteriscos para "
+    "negritas o cursivas, encabezados con '#', tablas, bloques de código con "
+    "acentos graves (```), enlaces, ni viñetas con '*' o '-'.\n"
+    "- Si necesitas listar elementos, usa texto plano (por ejemplo, números "
+    "seguidos de punto o guiones simples) y separa secciones con saltos de "
+    "línea normales.\n"
+    "- Mantén la respuesta legible en una terminal de ancho limitado: líneas "
+    "cortas, sin tabuladores ni caracteres de alineación especiales.\n\n"
     "REGLAS DE SELECCIÓN DE HERRAMIENTAS (obligatorias):\n"
     "- Las herramientas como `pyats_run_show_command`, "
     "`pyats_ping_from_network_device` y `pyats_show_logging` ABREN una "

@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 [tool.setuptools]
-packages = ["common", "config", "detector", "detector.tools", "supervisor"]
+packages = ["common", "config", "agents", "agents.detector", "agents.detector.tools", "agents.supervisor"]
 
 [build-system]
 requires = ["setuptools>=68"]

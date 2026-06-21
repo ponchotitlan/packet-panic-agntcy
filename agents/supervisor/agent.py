@@ -35,7 +35,7 @@ from config.config import (
     DEFAULT_MESSAGE_TRANSPORT,
     TRANSPORT_SERVER_ENDPOINT,
 )
-from supervisor.errors import RemoteAgentNoResponseError, TransportTimeoutError
+from agents.supervisor.errors import RemoteAgentNoResponseError, TransportTimeoutError
 
 logger = logging.getLogger("packetpanic.supervisor.agent")
 

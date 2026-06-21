@@ -15,8 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY pyproject.toml ./
 COPY common ./common
 COPY config ./config
-COPY detector ./detector
-COPY supervisor ./supervisor
+COPY agents ./agents
 # Registros OASF: fuente del Agent Directory para descubrir agentes en runtime.
 COPY oasf ./oasf
 
@@ -30,4 +29,4 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 # El comando se define en docker-compose por servicio (detector / supervisor).
-CMD ["python", "-m", "supervisor.main"]
+CMD ["python", "-m", "agents.supervisor.main"]
