@@ -64,7 +64,8 @@ te contestan con el diagnóstico.**
 | 🚌 SLIM | `slim` (contenedor) | Bus de mensajería seguro entre agentes |
 | 🤝 A2A + `AgentCard` | `agents/detector/card.py` | Manifiesto de capacidades del detector |
 | 📒 Agent Directory (OASF) | `common/directory.py`, `oasf/agents/` | Descubrimiento dinámico del detector por capacidad |
-| 🕸️ LangGraph | `agents/detector/agent.py`, `agents/supervisor/agent.py` | Orquestación dentro de cada agente |
+| 🕸️ LangGraph | `agents/detector/agent.py` | Grafo ReAct del **Detector** (`create_react_agent`) |
+| 🦜 LangChain (tool-calling) | `agents/supervisor/agent.py` | Orquestación del **Supervisor** (LLM con `bind_tools`, sin grafo) |
 | 🔭 Observe SDK + Jaeger | decoradores `@agent`, `@graph`; servicio `jaeger` | Trazabilidad OpenTelemetry de extremo a extremo |
 | 🔌 MCP (pyATS) | `agents/detector/tools/mcp_client.py`, `pyats-mcp` (contenedor) | Acceso a dispositivos de red reales (Cisco/pyATS) |
 
@@ -75,7 +76,7 @@ flowchart TB
     OP[👤 Operador / API / UI] -->|POST /agent/prompt| SUP
 
     subgraph SUP[🧠 Agente Supervisor]
-        API[⚡ FastAPI] --> LLMS[🤖 LLM + herramienta query_detector]
+        API[⚡ FastAPI] --> LLMS[🤖 LangChain: LLM + herramienta query_detector]
     end
 
     DIR[(📒 Agent Directory<br/>registros OASF)] -.descubre por skill.-> LLMS
@@ -176,7 +177,7 @@ packet-panic-agntcy/
 └── agents/                      # ← Los dos agentes del NOC
     ├── supervisor/              # ← Agente Supervisor (cliente A2A)
     │   ├── main.py              # API FastAPI: /agent/prompt
-    │   ├── agent.py             # LangGraph + query_detector + descubrimiento
+    │   ├── agent.py             # LangChain (LLM + bind_tools) + query_detector + descubrimiento
     │   └── errors.py            # Manejo de timeouts / sin respuesta
     │
     └── detector/               # ← Agente Detector (servidor A2A)
