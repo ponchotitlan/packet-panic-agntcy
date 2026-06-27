@@ -15,7 +15,7 @@
 </div>
 
 ---
-> 🗃️ Consulta aquí [las diapositivas presentadas durante la OpenSouthCode 2026](De%20la%20Torre%20de%20Babel%20al%20Internet%20de%20Agentes%20-%20el%20proyecto%20open-source%20AGNTCY.pdf)
+> 🗃️ Consulta aquí [las diapositivas presentadas durante la OpenSouthCode 2026](https://drive.google.com/file/d/1hsTYaIxNXqV_wMIZUbfMMyoQnWt_ygtv/view?usp=sharing)
 ---
 
 ## Índice
