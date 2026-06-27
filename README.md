@@ -15,6 +15,8 @@
 </div>
 
 ---
+> 🗃️ Consulta aquí [las diapositivas presentadas durante la OpenSouthCode 2026](De%20la%20Torre%20de%20Babel%20al%20Internet%20de%20Agentes%20-%20el%20proyecto%20open-source%20AGNTCY.pdf)
+---
 
 ## Índice
 
@@ -407,13 +409,8 @@ el fallo del MCP y conmuta a *dummy* sin cambios en el grafo.
 ---
 ## Registros OASF (Agent Directory)
 
-El `AgentCard` de A2A (en `agents/detector/card.py`) es el **manifiesto en tiempo de
-ejecución** que usan los agentes para el *handshake* A2A. Es la misma práctica que
-sigue **CoffeeAGNTCY** (su `corto/farm/card.py`).
-
-Además, AGNTCY define **OASF** (Open Agentic Schema Framework) como el esquema
-*canónico* para el Internet of Agents. Corto mantiene registros OASF estáticos en
-`oasf/agents/*.json`; aquí replicamos ese patrón:
+AGNTCY define **OASF** (Open Agentic Schema Framework) como el esquema
+*canónico* para el Internet of Agents. Este repositorio contiene registros OASF estáticos para cada agente en `oasf/agents/*.json`:
 
 ```
 oasf/agents/

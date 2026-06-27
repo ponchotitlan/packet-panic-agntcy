@@ -79,6 +79,7 @@ services:
       - detector
       - jaeger
 
+  # Servidor MCP para infraestructura de red
   pyats-mcp:
     build:
       context: https://github.com/ponchotitlan/pyATS_MCP.git

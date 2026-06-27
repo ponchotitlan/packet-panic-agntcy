@@ -8,8 +8,8 @@ license = { text = "Apache-2.0" }
 dependencies = [
     "agntcy-app-sdk==0.4.7.dev0",
     "a2a-sdk==0.3.2",
-    "langgraph>=1.0.0",
-    "langchain-core>=0.3.0",
+    "langgraph>=0.4.0",
+    "langchain-core>=0.3.27",
     "langchain-litellm>=0.2.0",
     "langchain-mcp-adapters>=0.1.0",
     "ioa-observe-sdk>=1.0.24",
